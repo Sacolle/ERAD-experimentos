@@ -1,51 +1,63 @@
 #!/bin/bash
 #SBATCH --job-name=fletcher
-#SBATCH --partition= # :TODO:
+#SBATCH --partition=cei
 #SBATCH --nodes=1
 #SBATCH --ntasks=27
 #SBATCH --time=02:00:00 #n sei quanto tempo
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err
 
-experiment_count=1
+
+set -eux
+
+
 CSV_FILE=./fletcher-experiments.csv
 mapfile -t csv_lines < <(tail -n +2 "$CSV_FILE")
 
 # setup the output
-OUTFOLDER=$SCRATCH/fletcher
+OUTFOLDER=$(printf "%s%s" "$SCRATCH" "fletcher")
 mkdir -p $OUTFOLDER
 
-# compile the code
-# the outfolder is set in compilation to the scratch folder
-cd nix-starpu-dev/dev/star-fletcher
-nix develop --command make
-cd ~
+# path to executable
+MAINPATH=~/nix-starpu-dev/dev/star-fletcher
+
+cd $MAINPATH
 
 for line in "${csv_lines[@]}"; do
     [[ -z "$line" ]] && continue # skip empty
 
-    IFS=',' read -r size outuput segmentation <<< "$line"
+    IFS=',' read -r size output segmentation <<< "$line"
 
     echo "============================="
     echo "  Size: $size"
     echo "  Output: $output"
     echo "  Segmentation: $segmentation"
+
+    filename=$(printf "%s_%s_%s" "$size" "$output" "$segmentation")
     
     dt=0.0005
     totalsteps=100
-    t=$(( $dt*$totalsteps ))
+    t=$(awk "BEGIN { print $dt * $totalsteps }")
     absorption=16
-    dtoutput=$(( $dt*$totalsteps ))
-    # change this 
-    path=$(hostname)/$size/$iterations/$threads
+    dtoutput=$(awk "BEGIN { print $dt * $output }")
     # add the fxt path and buffsize
-    TODOFLAGS ./fletcher/original/ModelagemFletcher.exe TTI $size $size $size \
-    $absorption 12.5 12.5 12.5 $dt $t $segmentation $dtoutput 2>&1 > $path/$blocks.out
+
+    STARPU_TRACE_BUFFER_SIZE=2048 \
+    STARPU_FXT_TRACE=1 \
+    STARPU_FXT_PREFIX=$OUTFOLDER \
+    STARPU_FXT_SUFFIX=$(printf "trace_%s" "$filename" ) \
+    nix run .\#star-fletcher -- TTI $size $size $size \
+    $absorption 12.5 12.5 12.5 $dt $t $segmentation $dtoutput 2>&1 > $OUTFOLDER/$filename.out
 done
 
-# retrive the resources in the scratch folder
 
-# STARPU_TRACE_BUFFER_SIZE=1024 # in Mb
-# STARPU_FXT_TRACE=1
-# STARPU_FXT_PREFIX=~/trace
-# STARPU_FXT_SUFFIX=test
+echo "retriving the experimental results"
+
+# retrive the resources in the scratch folder
+mkdir -p ~/experiment-output
+cp $OUTFOLDER/* ~/experiment-output
+
+
+
+echo "done"
+
