@@ -3,7 +3,7 @@
 #SBATCH --partition=cei
 #SBATCH --nodes=1
 #SBATCH --ntasks=27
-#SBATCH --time=02:00:00 #n sei quanto tempo
+#SBATCH --time=4:00:00
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err
 
@@ -15,7 +15,7 @@ CSV_FILE=./fletcher-experiments.csv
 mapfile -t csv_lines < <(tail -n +2 "$CSV_FILE")
 
 # setup the output
-OUTFOLDER=$(printf "%s%s" "$SCRATCH" "fletcher")
+OUTFOLDER=$(printf "%s%s" "$SCRATCH" "fletcher/direct-io")
 mkdir -p $OUTFOLDER
 
 # path to executable
@@ -36,7 +36,7 @@ for line in "${csv_lines[@]}"; do
     filename=$(printf "%s_%s_%s" "$size" "$output" "$segmentation")
     
     dt=0.0005
-    totalsteps=100
+    totalsteps=10
     t=$(awk "BEGIN { print $dt * $totalsteps }")
     absorption=16
     dtoutput=$(awk "BEGIN { print $dt * $output }")
@@ -54,8 +54,8 @@ done
 echo "retriving the experimental results"
 
 # retrive the resources in the scratch folder
-mkdir -p ~/experiment-output
-cp $OUTFOLDER/* ~/experiment-output
+mkdir -p ~/experiment-output/direct-io
+cp $OUTFOLDER/* ~/experiment-output/direct-io
 
 
 
