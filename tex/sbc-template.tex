@@ -49,6 +49,51 @@
   página do artigo.
 \end{resumo}
 
+\iffalse
+
+# Feedback do schnorr
+
+## Introdução
+    - Falar dos trabalhos de stencil em HPC de uma maneira geral para contextualizar
+    - Falar de aplicações RTM e de como são trivialmente paralelizáveis entre /shots/
+    - Falar dos trabalhos de IO de RTM (precisa ser feito - há problemas) 
+        - Enchancing RTM with I/O Overlaping /cite{kunas_enhacing_2025}
+        - Asynchronous Task-Based Execution of RTM ... /cite{alonazi_asynchronous_2019}
+            - Falar do novo paradigma de STF, como ele pode ser usado nesse contexto de RTM (referenciar o paper)
+    - Além do StarPU com RTM, Falar de outros trabalhos com STF. (o que já foi feito e porque ainda há problemas)
+    - Porque StarPU? 
+        - Achieving High Performance on Supercomputers with a Sequential Task-based Programming Model /cite{agullo_achieving_2017}
+    - Em que lugar o fletcher se encaixa. Falar da implementação do Nesi
+        + Usar aqui algo no sentido que não é a primeira vez que o
+        paralelismo de tarefas é usado para Stencil (comentar
+        daquele trabalho do StarPU de out-of-core, o trabalho do
+        Nesi), ressaltar que a parte de IO per se ainda não foi
+        efetivamente explorada.
+    - Falar da nossa aplicação, das contribuições
+    - Três frases para detalhar a estrutura do texto (ajudar o leitor a entender tua organização textual)
+## Métodos e Materiais (Descrever a implementação da aplicação)
+    - Falar da quebra de dependencia RW
+    - Falar do sistema de flecha implementado
+    - Falar da gerência de memória automática pelo StarPU e como isso facilita no sistema de flecha
+    - Falar das 3 tasks implementadas
+        - Wave propagation 
+            - Desafio com cubos disjuntos e acesso a vizinhos
+        - Wave insertion
+            - Design da aplicação
+        - Block Write
+            - Escrita direta em disco sem bufferização
+
+## Resultados Parciais
+    - Uma tabela de uma execução grande
+    - Gráfico do mascaramento da task
+
+## Conclusão e trabalhos futuros
+    - Falar que temos uma mascaração da escrita em Disco
+    - A comparação não é justa, pois não congela o arquivo em um.
+    - Falar da possibilidade do uso do sistema de flecha do star-fletcher ser usado para reaproveitar o cache
+        - Mencionar a API de PAPI counters do StarPU  
+
+\fi
 
 \section{General Information}
 
@@ -149,14 +194,13 @@ visible difference in the result.
 \section{References}
 
 Bibliographic references must be unambiguous and uniform.  We recommend giving
-the author names references in brackets, e.g. \cite{knuth:84},
-\cite{boulic:91}, and \cite{smith:99}.
+the author names references in brackets, e.g. \cite{starpu-paper},
 
 The references must be listed using 12 point font size, with 6 points of space
 before each reference. The first line of each reference should not be
 indented, while the subsequent should be indented by 0.5 cm.
 
 \bibliographystyle{sbc}
-\bibliography{sbc-template}
+\bibliography{references.bib}
 
 \end{document}
