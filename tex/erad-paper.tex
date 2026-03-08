@@ -9,7 +9,10 @@
 \usepackage{booktabs} 
 \usepackage{caption}
 
-\newcommand{\starflet}{\starflet}
+\newcommand{\starflet}{\textbf{Star-Fletcher}}
+\newcommand{\waveprop}{\texttt{wave\_propagation}}
+\newcommand{\waveinsert}{\texttt{wave\_insertion}}
+\newcommand{\blockwrite}{\texttt{block\_write}}
 
 \sloppy
 
@@ -36,13 +39,13 @@
 	It's the end days of homogenous architectures. With the ever-increasing computing demands of High Performance Computing (HPC) applications, nodes in a data center, even more after the AI boom, are required to incorporate other accelerator beyond the CPU. This increases programming complexity.
 
 	One of the answers espoused for this problem are Sequential Task Flow (STF) runtime systems. In those, work is segmented in tasks with explicit dependencies. Those tasks are submitted sequentially and execute asynchronously with respect to their dependencies. With this model it is easy to distribute task between different architectures. One could implement a task to run in the CPU and also provide an implementation to run in the GPU. The runtime deals with the load balancing and data transfers. Some popular runtimes are PaRSEC \cite{bosilca_parsec_2013} and StarPU \cite{starpu-paper}, the latter was used in this paper. 
-	Both of these systems have a data management side to them, which allows for easier track of dependencies and task submission. StarPU's automatic memory management was essential in enabling many mechanisms for this paper's program optimizations. Many applications adopted this paradigm for a plethora of contexts, like dense linear algebra \cite{agullo_achieving_2017, abdulah_accelerating_2022}, Computational Fluid Dynamics (CFD) \cite{couteyen_carpaye_design_2018,leandro_nesi_task-based_2020} and Reverse Time Migration (RTM) applications \cite{boillot_task-based_2014, alonazi_asynchronous_2019}.
+	Both of these systems have a data management side to them, which allows for easier track of dependencies and task submission. StarPU's automatic memory management was essential in enabling many mechanisms for this paper's program optimizations. Many applications adopted this paradigm for a plethora of contexts, like dense linear algebra \cite{abdulah_accelerating_2022}, Computational Fluid Dynamics (CFD) \cite{couteyen_carpaye_design_2018,leandro_nesi_task-based_2020} and Reverse Time Migration (RTM) applications \cite{boillot_task-based_2014, alonazi_asynchronous_2019}.
 
 	RTM is a tool of seismic analysis for detecting subsurface deposits of materials. It propagates a wavefield forwards in time, records it and then integrates the recording back in time to generate a partial image. This process is repeated many times, each called a \textit{shot}, to generate the final image. There are no dependencies between \textit{shots}, making RTM applications embarrassingly parallelizable. The Fletcher algorithm \cite{fletcher_reverse_2009} can deal with Tilted Transverse Isotropic (TTI) medium and is the chosen implementation of this paper's program.
 
 	One important characteristic of RTM is that it's recorded data between the forwards and backwards propagation can be massive. A normal volume of $1000 \times 1000 \times 500$ saved in FP64 results in $~4Gb$ of data, which is saved many times during execution. That makes this kind of application I/O bound. Some research is devoted to lossy methods of reducing the amount of saved memory \cite{huang_towards_2023}, but most focus is in overlapping computation with I/O operations \cite{alonazi_asynchronous_2019, kunas_enhancing_2025}. AlOnazi's work calls back to the STF paradigm, in which the StarPU runtime system was used to manage the I/O and data transfer operations while the computation was done in GPUs using its out-of-core (OOC) features. This utilization was limited to homogenous computation on GPUs and two-level parallelism, where the whole medium was placed in the GPUs shared memory. This resulted in a two-tier parallel system, where computations used traditional parallel methods while the I/O used the STF model.
 
-	In order to fill this design space, we propose \starflet, a first-order task parallelism with space-segmentation implementation of Fletcher using the StarPU library. It represents only the forwards wave propagation, with the snapshots being saved to disk as to always simulate medium too large to fit in main memory. The decision of space segmentation allows for first-order task parallelism while enabling mediums too large to fit in memory to be processed efficiently. We utilize the works of \cite{leandro_nesi_task-based_2020,qu_exploiting_2023} to implement time tiling in order to incur speed-ups with respect to cache reuse. By reformulating \starflet to fit this paradigm, all I/O operations became masked behind computation. This side effect was possible because STF, and  specially StarPU, are extremely well equipped to implement the time tiling paradigm.
+	In order to fill this design space, we propose \starflet, a first-order task parallelism with space-segmentation implementation of Fletcher using the StarPU library. It represents only the forwards wave propagation, with the snapshots being saved to disk as to always simulate medium too large to fit in main memory. The decision of space segmentation allows for first-order task parallelism while enabling mediums too large to fit in memory to be processed efficiently. We utilize the works of \cite{leandro_nesi_task-based_2020,qu_exploiting_2023} to implement time tiling in order to incur speed-ups with respect to cache reuse. By reformulating \starflet \, to fit this paradigm, all I/O operations became masked behind computation. This side effect was possible because STF, and  specially StarPU, are extremely well-equipped to implement the time tiling paradigm.
 	
 	\iffalse
 	Fundamentally, RTM applications are stencil aplications, programs originated from the discretization of diferencial equations that flow with time. In this context, STF has been used in first order in many CFD aplications 
@@ -58,24 +61,24 @@
 
 \section{Methods and Materials}
 \label{sec:methodsandmaterials}
-	In Fletchers common implementations, two buffers are used, the current and the previous. The current is used compute the values that will be added to the previous, akin to $prev +\!\!= F(curr)$. Then the buffers are swapped, and the process repeats until all iterations are executed. This format stops the Arrow implementation because it requires that an iteration completely finishes before starting the next one. To discretize with time, the swap was removed, resulting in the computation $A_{t} := F(A_{t-1}) + A_{t-2}$. StarPU automatic memory management was crucial in this point. Given in the formula that $A_{t}$ is exclusively a write dependency, StarPU can allocate it when necessary and free it when no other task requires it. This allows for the Arrow to grow as tall as the system's memory allows. Another consequence is that writing to disk $prev$, or in this case $A_t$ does not block the computation of the next iteration anymore, allowing for asynchronous I/O.
+	In Fletcher's basic implementation, two buffers are used, the current and the previous. The current is used compute the values that will be added to the previous, akin to $prev +\!\!= F(curr)$. Then the buffers are swapped, and the process repeats until all iterations are executed. This format stops the Arrow implementation because it requires that an iteration completely finishes before starting the next one. To discretize with time, the swap was removed, resulting in the computation $A_{t} := F(A_{t-1}) + A_{t-2}$. This relies on StarPU's automatic memory management (add footnote). With $A_{t}$ as an exclusively write dependency, StarPU can allocate it when necessary and free it when no other task requires it. This mechanism allows for the Arrow to grow as tall as the system's memory allows. Another consequence is that writing $prev$ to disk, or in this case $A_t$, does not block the computation of the next iteration anymore, allowing for asynchronous I/O.
 
-	The implemented tasks to achieve this where wave propagation, source insertion and block writing to disc. Considering this application is spacially segmented with disjointed memory, accessing neighboring blocks in the wave propagation required additional bounds checks. Using meta programming, the number of checks where reduced to three in the cross product and the performance hit was kept to a minimum. Source insertion was simple in that the source always occurs at the center of the volume. The disjointed space also affected the block writing step. In it, each thread had its own file and wrote the received blocks in it with some metadata that enables reconstruction of the full volume. Currently, on program termination, a script congeals all these files into one, which will be integrated in the final application. With the changes to the programs data dependencies, it already masked the writes to disk behind computation.
+	We have implemented three tasks in StarPU to obtain the Arrow method: \waveprop, \waveinsert\,and \blockwrite. The space segmentation required disjointed memory, which required additional bounds checks when accessing neighboring blocks in the \waveprop task. Using meta programming, the number of checks where reduced to three in the cross product and two in the second derivative. The disjointed space also affected \blockwrite task. For it, each thread used its own file and wrote the received blocks in them with some metadata that enables later reconstruction of the full volume. Currently, on program termination, a script congeals all these files into one, which will be integrated in the final application. 
 
-\section{Parcial Results}
+\section{Preliminary Results}
 \label{sec:parcialresults}
 	%experimentos rodados na CEI1.
-	The program was tested in a machine with 2 Intel(R) Xeon(R) Silver 4116 CPUs (2.1 GHz, 48 threads, 24 cores). A volume of $600 \times 600 \times 600$ was iterated 10 times, snapshooting at varying time steps. To illustrate the I/O masking, \ref{img:graph} represents the execution where the space was divided in 64 blocks and every step the full volume was saved to disk.
+	The program was tested in one of the nodes of the 'cei' partition of INF/UFRGS's PCAD platform (2x Intel(R) Xeon(R) Silver 4116 CPUs 2.1 GHz, 48 threads, 24 cores). A volume of $600 \times 600 \times 600$ was iterated 10 times, snapshooting at various interval configurations. To illustrate the I/O masking, Figure \ref{img:graph} represents the execution where the space was divided in 64 blocks and every step the full volume was saved to disk. On the $y$ axis we have which iteration is happening and the $x$ axis is time. The blocks are represented as bars, but they are executed so close together that it appears as a bar.
 
 \begin{figure}[ht]
     \centering
 	% trim order: Left, Bottom, Right, Top
-    \includegraphics[page=1, trim=0cm 14.38cm 0cm 0cm, clip, width=\textwidth]{imgs/trace_560_1_4_0_starvz.pdf}
+    \includegraphics[page=1, trim=0cm 14.38cm 0cm 0cm, clip, width=\textwidth, height=0.25\textheight]{imgs/trace_560_1_4_0_starvz.pdf}
     \caption{Trace showing the parallelization of tasks per iteration.}
 	\label{img:graph}
 \end{figure}
 
-No write task is visible. That shows that it is being interwoven with the computation and is not bottlenecking it at any point. We can analyze the data at in \ref{tab:iobench} to see that each I/O task does not comprise a big individual expense. Scatering them throughout computation results in an effective performance gain. 
+No write task is visible in Figure \ref{img:graph} (the blue lines). That shows that it is being interleaved with the computation and is not part of the execution's critical path at any point. We can analyze the data at in Table \ref{tab:iobench} to see that each I/O task does not comprise a big individual expense. Scattering them throughout computation results in an effective performance gain. 
 	
 \begin{table}[ht]
     \centering
@@ -84,9 +87,9 @@ No write task is visible. That shows that it is being interwoven with the comput
     \begin{tabular}{lrrrr}
         \toprule
         Task & Amount & Mean & Min & Max \\
-        wave insertion & 50 & 0.00290 & 0.00183 & 0.00633 \\
-        wave propagation & 3200 & 99.1 & 55.1 & 451.0 \\
-        block writing & 704 & 0.0395 & 0.0139 & 0.628 \\
+        \waveinsert & 50 & 0.00290 & 0.00183 & 0.00633 \\
+        \waveprop & 3200 & 99.1 & 55.1 & 451.0 \\
+        \blockwrite & 704 & 0.0395 & 0.0139 & 0.628 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -94,8 +97,7 @@ No write task is visible. That shows that it is being interwoven with the comput
 \section{Conclusion and Future Work}
 \label{sec:conclusion}
 
-	The design decisions taken to implement time tilign fit like a glove in STF RTM. StarPU's features allow for easy implementation of it and as a bonus it breaks dependencies that stop I/O masking. It's still necessary to explore it this Arrow design really results in performance gains and in cache reuse. 
-	Nonetheless, this program is a work in progress and more comparissons with conventional parallel versions of fletcher are necessary to validate \textbf{star-flecther}s performance.
+	The design decisions taken to implement time tiling in RTM where helped by STF. StarPU's features allow for easy implementation of it and as a bonus it breaks dependencies that stop I/O masking. Nonetheless, this program is a work in progress and more comparisons with conventional parallel versions of fletcher are necessary to validate \starflet performance. It's still necessary to explore it this Arrow design really results in performance gains and in cache reuse.
 
 \bibliographystyle{sbc}
 \bibliography{references.bib}
