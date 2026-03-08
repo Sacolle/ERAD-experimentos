@@ -17,20 +17,33 @@
 	annote = {Tenho ele impresso.  Paper usado para citar o StarPU.  },
 	file = {PDF:/home/colle/Zotero/storage/VQW8BS4F/Augonnet et al. - StarPU A Unified Platform for Task Scheduling on Heterogeneous Multicore Architectures.pdf:application/pdf},
 }
-
-@misc{noauthor_design_nodate,
-	title = {Design, {Implementation} and {Performance} {Analysis} of a {CFD} {Task}-{Based} {Application} for {Heterogeneous} {CPU}/{GPU} {Resources}},
-	url = {https://www.researchgate.net/publication/345472918_Design_Implementation_and_Performance_Analysis_of_a_CFD_Task-Based_Application_for_Heterogeneous_CPUGPU_Resources},
-	abstract = {Access 135+ million publications and connect with 20+ million researchers. Join for free and gain visibility by uploading your research.},
-	language = {en},
-	urldate = {2025-10-16},
-	journal = {ResearchGate},
-	keywords = {Tiling, STARPU},
+% artigo igual ao do nesi, não?
+% \cite{leandro_nesi_task-based_2020},
+% esse aqui é o que não tem disponível online o pdf acho
+% ou seja, o que implementa a flecha
+@InProceedings{nesi_conference_paper,
+	author="Nesi, Lucas Leandro
+	and Schnorr, Lucas Mello
+	and Navaux, Philippe Olivier Alexandre",
+	editor="Senger, Hermes
+	and Marques, Osni
+	and Garcia, Rogerio
+	and Pinheiro de Brito, Tatiana
+	and Iope, Rog{\'e}rio
+	and Stanzani, Silvio
+	and Gil-Costa, Veronica",
+	title="Design, Implementation and Performance Analysis of a CFD Task-Based Application for Heterogeneous CPU/GPU Resources",
+	booktitle="High Performance Computing for Computational Science -- VECPAR 2018",
+	year="2019",
+	publisher="Springer International Publishing",
+	address="Cham",
+	pages="31--44",
+	abstract="The development of parallel solutions over contemporary heterogeneous supercomputers is complex and challenging, especially for coding, performance analysis, and behavioral characterization. The task-based programming model is a possible alternative to adequately reduce the burden on the programmer. Such model consists of dividing the application into tasks with dependencies through a directed acyclic graph (DAG), and subject the DAG to a runtime scheduler that will map tasks to resources. In this paper, we present the design, development, and performance analysis of a task-based heterogeneous (CPU and GPU) application of a Computational Fluid Dynamics (CFD) problem that simulates the flow of an incompressible Newtonian fluid with constant viscosity. We implement our solution based on the StarPU runtime and use the StarVZ toolkit to conduct a comprehensive performance analysis. Results indicate that our solution provides a 6.5{\$}{\$}{\backslash}times {\$}{\$}{\texttimes}speedup compared to the serial version on the target machine using 7 CPU workers and a 60{\$}{\$}{\backslash}times {\$}{\$}{\texttimes}speedup using 5 CPU and 2 GPU workers.",
+	isbn="978-3-030-15996-2",
 	annote = {Esse é o trabalho do mestrando do schnorr sobre StarPU.
 Eu tenho ele impresso. Revisar.
 Ele destaca o sistema de flecha, entrando no caso de tiling com o StarPU.
-
-},
+	},
 	file = {PDF:/home/colle/Zotero/storage/BAAP7L5U/Design, Implementation and Performance Analysis of a CFD Task-Based Application for Heterogeneous CP.pdf:application/pdf;Snapshot:/home/colle/Zotero/storage/83FPFEI8/345472918_Design_Implementation_and_Performance_Analysis_of_a_CFD_Task-Based_Application_for_He.html:text/html},
 }
 
@@ -56,6 +69,8 @@ Ele descreve o programa que estamos implementando.
 	file = {PDF:/home/colle/Zotero/storage/KX7BWZ2J/Fletcher et al. - 2009 - Reverse time migration in tilted transversely isotropic (TTI) media.pdf:application/pdf},
 }
 
+%fix author
+% essa é a tese de doutorado eu acho
 @misc{noauthor_asynchronous_nodate,
 	title = {Asynchronous {Task}-{Based} {Parallelism} in {Seismic} {Imaging} and {Reservoir} {Modeling} {Simulations}},
 	url = {https://repository.kaust.edu.sa/items/f0506e64-3db9-4491-9ee8-db5f6dcaa152},
