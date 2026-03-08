@@ -5,57 +5,11 @@
 \usepackage[utf8]{inputenc}
 \usepackage[english]{babel}
 %\usepackage[latin1]{inputenc}  
-\usepackage{todonotes}
+
+\usepackage{booktabs} 
+\usepackage{caption}
      
 \sloppy
-
-\newcommand{\intodo}[1]{\todo[inline]{#1}}
-\iffalse
-# Feedback do schnorr
-
-## Introdução
-	- Introduzir aplicações RTM
-    - Falar de aplicações RTM e de como são trivialmente paralelizáveis entre /shots/
-    - Falar dos trabalhos de IO de RTM (precisa ser feito - há problemas) 
-        - Enchancing RTM with I/O Overlaping /cite{kunas_enhacing_2025}
-        - Asynchronous Task-Based Execution of RTM ... /cite{alonazi_asynchronous_2019}
-            - Falar do novo paradigma de STF, como ele pode ser usado nesse contexto de RTM (referenciar o paper)
-				- TODO: Listar os trabalhos
-    - Além do StarPU com RTM, Falar de outros trabalhos com STF. (o que já foi feito e porque ainda há problemas)
-    - Falar dos trabalhos de stencil em HPC de uma maneira geral para contextualizar
-		- TODO: Listar os trabalhos
-    - Porque StarPU? 
-        - Achieving High Performance on Supercomputers with a Sequential Task-based Programming Model /cite{agullo_achieving_2017}
-    - Em que lugar o fletcher se encaixa. Falar da implementação do Nesi
-        + Usar aqui algo no sentido que não é a primeira vez que o
-        paralelismo de tarefas é usado para Stencil (comentar
-        daquele trabalho do StarPU de out-of-core, o trabalho do
-        Nesi), ressaltar que a parte de IO per se ainda não foi
-        efetivamente explorada.
-    - Falar da nossa aplicação, das contribuições
-    - Três frases para detalhar a estrutura do texto (ajudar o leitor a entender tua organização textual)
-## Métodos e Materiais (Descrever a implementação da aplicação)
-    - Falar da quebra de dependencia RW
-    - Falar do sistema de flecha implementado
-    - Falar da gerência de memória automática pelo StarPU e como isso facilita no sistema de flecha
-    - Falar das 3 tasks implementadas
-        - Wave propagation 
-            - Desafio com cubos disjuntos e acesso a vizinhos
-        - Wave insertion
-            - Design da aplicação
-        - Block Write
-            - Escrita direta em disco sem bufferização
-
-## Resultados Parciais
-    - Uma tabela de uma execução grande
-    - Gráfico do mascaramento da task
-
-## Conclusão e trabalhos futuros
-    - Falar que temos uma mascaração da escrita em Disco
-    - A comparação não é justa, pois não congela o arquivo em um.
-    - Falar da possibilidade do uso do sistema de flecha do star-fletcher ser usado para reaproveitar o cache
-        - Mencionar a API de PAPI counters do StarPU  
-\fi
 
 \title{How the Sequential Task Flow model allowed for \\ the trivial overlap of I/O and computations on stencil programs.}
 
@@ -73,7 +27,7 @@
 \maketitle
 
 \begin{abstract}
-	\intodo{Fazer o abstract, mas só no fim.}
+	With the evermore complex ecosystem of High Performance Computing (HPC), the Sequential Task Flow (STF) model arrives to provide a convenient interface to compute in heterogeneous architectures. This paper explores the computation of Reverse Time Migration (RTM) and how an implementation in STF alongside time tiling resulted on the side effect of complete I/O to disk masking.
 \end{abstract}
 
 \section{Introduction}
@@ -95,58 +49,47 @@
 	\textbf{Star-fletcher} is the first space-segmented implementation of Fletcher with first tier task parallelism. Therefore, mediums too large to fit inside GPU's memories can now be processed in reasonable time. It also demonstrates the effectiveness of the STF paradigm in masking I/O communications when directing a programs design in to the time tiling space. The evidence of cache reuse has not been tested yeet for this program's current implementation. 
 
 	In the section \ref{sec:methodsandmaterials} it is discussed the implementation detail of \textbf{star-fletcher}, in \ref{sec:parcialresults} it is present partial results of overlap of I/O and computation and in \ref{sec:conclusion} it is elaborated future directions for the project and which experimental results are being aimed for.
-	
+
 \section{Methods and Materials}
 \label{sec:methodsandmaterials}
-	- Falar de como era a dependência de dados
-    - Falar da quebra de dependencia RW
-    - Falar do sistema de flecha implementado
-		- Adicionar uma figura?
-		- Falar da gerência de memória automática pelo StarPU e como isso facilita no sistema de flecha
-    - Falar das 3 tasks implementadas
-        - Wave propagation 
-            - Desafio com cubos disjuntos e acesso a vizinhos
-        - Wave insertion
-            - Design da aplicação
-        - Block Write
-            - Escrita direta em disco sem bufferização
+	In Fletchers common implementations, two buffers are used, the current and the previous. The current is used compute the values that will be added to the previous, akin to $prev +\!\!= F(curr)$. Then the buffers are swapped, and the process repeats until all iterations are executed. This format stops the Arrow implementation because it requires that an iteration completely finishes before starting the next one. To discretize with time, the swap was removed, resulting in the computation $A_{t} := F(A_{t-1}) + A_{t-2}$. StarPU automatic memory management was crucial in this point. Given in the formula that $A_{t}$ is exclusively a write dependency, StarPU can allocate it when necessary and free it when no other task requires it. This allows for the Arrow to grow as tall as the system's memory allows. Another consequence is that writing to disk $prev$, or in this case $A_t$ does not block the computation of the next iteration anymore, allowing for asynchronous I/O.
+
+	The implemented tasks to achieve this where wave propagation, source insertion and block writing to disc. Considering this application is spacially segmented with disjointed memory, accessing neighboring blocks in the wave propagation required additional bounds checks. Using meta programming, the number of checks where reduced to three in the cross product and the performance hit was kept to a minimum. Source insertion was simple in that the source always occurs at the center of the volume. The disjointed space also affected the block writing step. In it, each thread had its own file and wrote the received blocks in it with some metadata that enables reconstruction of the full volume. Currently, on program termination, a script congeals all these files into one, which will be integrated in the final application. With the changes to the programs data dependencies, it already masked the writes to disk behind computation.
 
 \section{Parcial Results}
 \label{sec:parcialresults}
-	\intodo{Tabela com o tempo de execução das tarefas.}
-	\intodo{Alguma imagem gerada pelo Starvz aqui mostrando o mascaramento.}
+	%experimentos rodados na CEI1.
+	The program was tested in a machine with 2 Intel(R) Xeon(R) Silver 4116 CPUs (2.1 GHz, 48 threads, 24 cores). A volume of $600 \times 600 \times 600$ was iterated 10 times, snapshooting at varying time steps. To illustrate the I/O masking, \ref{img:graph} represents the execution where the space was divided in 64 blocks and every step the full volume was saved to disk.
+
+\begin{figure}[ht]
+    \centering
+	% trim order: Left, Bottom, Right, Top
+    \includegraphics[page=1, trim=0cm 14.38cm 0cm 0cm, clip, width=\textwidth]{imgs/trace_560_1_4_0_starvz.pdf}
+    \caption{Trace showing the parallelization of tasks per iteration.}
+	\label{img:graph}
+\end{figure}
+
+No write task is visible. That shows that it is being interwoven with the computation and is not bottlenecking it at any point. We can analyze the data at in \ref{tab:iobench} to see that each I/O task does not comprise a big individual expense. Scatering them throughout computation results in an effective performance gain. 
+	
+\begin{table}[ht]
+    \centering
+    \caption{Characteristics of the trial run.}
+    \label{tab:iobench}
+    \begin{tabular}{lrrrr}
+        \toprule
+        Task & Amount & Mean & Min & Max \\
+        wave insertion & 50 & 0.00290 & 0.00183 & 0.00633 \\
+        wave propagation & 3200 & 99.1 & 55.1 & 451.0 \\
+        block writing & 704 & 0.0395 & 0.0139 & 0.628 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
 \section{Conclusion and Future Work}
 \label{sec:conclusion}
-    - Falar que temos uma mascaração da escrita em Disco
-    - A comparação não é justa, pois não congela o arquivo em um.
-    - Falar da possibilidade do uso do sistema de flecha do star-fletcher ser usado para reaproveitar o cache
-        - Mencionar a API de PAPI counters do StarPU  
 
-\section{Figures and Captions}\label{sec:figs}
-
-
-Figure and table captions should be centered if less than one line, otherwise justified and indented by 0.8cm on
-both margins, as shown in Figure~\ref{fig:exampleFig2}. The caption font must
-be Helvetica, 10 point, boldface, with 6 points of space before and after each
-caption.
-
-\begin{figure}[ht]
-\centering
-\includegraphics[width=.3\textwidth]{imgs/fig2.jpg}
-\caption{This figure is an example of a figure caption taking more than one
-  line and justified considering margins mentioned in Section~\ref{sec:figs}.}
-\label{fig:exampleFig2}
-\end{figure}
-
-\begin{table}[ht]
-\centering
-\caption{Variables to be considered on the evaluation of interaction
-  techniques}
-\label{tab:exTable1}
-\includegraphics[width=.7\textwidth]{imgs/table.jpg}
-\end{table}
-
+	The design decisions taken to implement time tilign fit like a glove in STF RTM. StarPU's features allow for easy implementation of it and as a bonus it breaks dependencies that stop I/O masking. It's still necessary to explore it this Arrow design really results in performance gains and in cache reuse. 
+	Nonetheless, this program is a work in progress and more comparissons with conventional parallel versions of fletcher are necessary to validate \textbf{star-flecther}s performance.
 
 \bibliographystyle{sbc}
 \bibliography{references.bib}
